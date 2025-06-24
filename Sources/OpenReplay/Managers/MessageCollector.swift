@@ -129,7 +129,7 @@ class MessageCollector: NSObject {
         }
     }
 
-    func sendMessage(_ message: ORMessage) {
+    public func sendMessage(_ message: ORMessage) {
         if Openreplay.shared.bufferingMode {
             if let trigger = ConditionsManager.shared.processMessage(msg: message) {
                 Openreplay.shared.triggerRecording(condition: trigger)

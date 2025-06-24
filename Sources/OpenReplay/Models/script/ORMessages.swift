@@ -2,7 +2,7 @@
 // Auto-generated, do not edit
 import UIKit
 
-enum ORMessageType: UInt64 {
+public enum ORMessageType: UInt64 {
     case mobileMetadata = 92
     case mobileEvent = 93
     case mobileUserID = 94
@@ -333,11 +333,11 @@ class ORMobilePerformanceEvent: ORMessage {
     }
 }
 
-class ORMobileLog: ORMessage {
+public class ORMobileLog: ORMessage {
     let severity: String
     let content: String
 
-    init(severity: String, content: String) {
+    public init(severity: String, content: String) {
         self.severity = severity
         self.content = content
         super.init(messageType: .mobileLog)

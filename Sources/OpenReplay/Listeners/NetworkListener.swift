@@ -6,8 +6,8 @@ open class NetworkListener: NSObject {
     private var method: String = ""
     private var requestBody: String?
     private var requestHeaders: [String: String]?
-    var ignoredKeys = ["password"]
-    var ignoredHeaders = ["Authentication", "Auth"]
+    public var ignoredKeys = ["password"]
+    public var ignoredHeaders = ["Authentication", "Auth"]
 
     public override init() {
         startTime = UInt64(Date().timeIntervalSince1970 * 1000)
