@@ -1,6 +1,6 @@
 import UIKit
 
-struct GenericMessage {
+public struct GenericMessage {
     let typeRaw: UInt64
     let type: ORMessageType?
     let timestamp: UInt64
@@ -18,25 +18,25 @@ struct GenericMessage {
     }
 }
 
-class ORMessage: NSObject {
+public class ORMessage: NSObject {
 
     let messageRaw: UInt64
     let message: ORMessageType?
     let timestamp: UInt64
 
-    init(messageType: ORMessageType) {
+    public init(messageType: ORMessageType) {
         self.messageRaw = messageType.rawValue
         self.message = messageType
         self.timestamp = UInt64(Date().timeIntervalSince1970 * 1000)
     }
 
-    init?(genericMessage: GenericMessage) {
+    public init?(genericMessage: GenericMessage) {
         self.messageRaw = genericMessage.typeRaw
         self.message = genericMessage.type
         self.timestamp = genericMessage.timestamp
     }
 
-    func contentData() -> Data {
+    public func contentData() -> Data {
         fatalError("This method should be overridden")
     }
 }
