@@ -1,6 +1,6 @@
 import UIKit
 
-public struct GenericMessage {
+struct GenericMessage {
     let typeRaw: UInt64
     let type: ORMessageType?
     let timestamp: UInt64
@@ -18,19 +18,19 @@ public struct GenericMessage {
     }
 }
 
-public class ORMessage: NSObject {
+class ORMessage: NSObject {
 
     let messageRaw: UInt64
     let message: ORMessageType?
     let timestamp: UInt64
 
-    public init(messageType: ORMessageType) {
+    init(messageType: ORMessageType) {
         self.messageRaw = messageType.rawValue
         self.message = messageType
         self.timestamp = UInt64(Date().timeIntervalSince1970 * 1000)
     }
 
-    public init?(genericMessage: GenericMessage) {
+    init?(genericMessage: GenericMessage) {
         self.messageRaw = genericMessage.typeRaw
         self.message = genericMessage.type
         self.timestamp = genericMessage.timestamp

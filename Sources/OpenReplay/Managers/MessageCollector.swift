@@ -5,7 +5,7 @@ struct BatchArch {
     var data: Data
 }
 
-class MessageCollector: NSObject {
+public class MessageCollector: NSObject {
     public static let shared = MessageCollector()
     private var imagesWaiting = [BatchArch]()
     private var imagesSending = [BatchArch]()

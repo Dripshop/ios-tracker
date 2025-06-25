@@ -343,7 +343,7 @@ public class ORMobileLog: ORMessage {
         super.init(messageType: .mobileLog)
     }
 
-    override init?(genericMessage: GenericMessage) {
+    public override init?(genericMessage: GenericMessage) {
       do {
             var offset = 0
             self.severity = try genericMessage.body.readString(offset: &offset)
@@ -354,11 +354,11 @@ public class ORMobileLog: ORMessage {
         }
     }
 
-    override func contentData() -> Data {
+    public override func contentData() -> Data {
         return Data(values: UInt64(103), timestamp, Data(values: severity, content))
     }
 
-    override var description: String {
+    public override var description: String {
         return "-->> MobileLog(103): timestamp:\(timestamp) severity:\(severity) content:\(content)";
     }
 }
