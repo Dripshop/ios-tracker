@@ -17,6 +17,7 @@ open class Openreplay: NSObject {
     public var trackerState = CheckState.unchecked
     private var networkCheckTimer: Timer?
     public var bufferingMode = false
+    private var pathMonitor: NWPathMonitor?
     public var serverURL: String {
         get { NetworkManager.shared.baseUrl }
         set { NetworkManager.shared.baseUrl = newValue }
@@ -26,42 +27,50 @@ open class Openreplay: NSObject {
     @objc open func start(projectKey: String, options: OROptions) {
         self.options = options
         self.projectKey = projectKey
-        let monitor = NWPathMonitor()
-        let q = DispatchQueue.global(qos: .background)
-        
-        monitor.start(queue: q)
-        
-        monitor.pathUpdateHandler = { path in
-            if path.usesInterfaceType(.wifi) {
-                if PerformanceListener.shared.isActive {
-                    PerformanceListener.shared.networkStateChange(1)
-                }
-                self.trackerState = CheckState.canStart
-            } else if path.usesInterfaceType(.cellular) {
-                if PerformanceListener.shared.isActive {
-                    PerformanceListener.shared.networkStateChange(0)
-                }
-                if options.wifiOnly {
-                    self.trackerState = CheckState.cantStart
-                    print("Connected to Cellular and options.wifiOnly is true. Openreplay will not start.")
+        self.pathMonitor = NWPathMonitor()
+        let q = DispatchQueue.global(qos: .utility)
+
+        self.pathMonitor?.pathUpdateHandler = { [weak self] path in
+            guard let self = self else { return }
+
+            DispatchQueue.main.async {
+                if path.usesInterfaceType(.wifi) || path.usesInterfaceType(.wiredEthernet) {
+                    if PerformanceListener.shared.isActive {
+                        PerformanceListener.shared.networkStateChange(1)
+                    }
+                    self.trackerState = .canStart
+                } else if path.usesInterfaceType(.cellular) {
+                    if PerformanceListener.shared.isActive {
+                        PerformanceListener.shared.networkStateChange(0)
+                    }
+                    if options.wifiOnly {
+                        self.trackerState = .cantStart
+                        print("Connected to Cellular and options.wifiOnly is true. Openreplay will not start.")
+                    } else {
+                        self.trackerState = .canStart
+                    }
                 } else {
-                    self.trackerState = CheckState.canStart
+                    self.trackerState = .cantStart
+                    print("Not connected to either WiFi or Cellular. Openreplay will not start.")
                 }
-            } else {
-                self.trackerState = CheckState.cantStart
-                print("Not connected to either WiFi or Cellular. Openreplay will not start.")
             }
         }
-        
-        networkCheckTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true, block: { (_) in
-            if self.trackerState == CheckState.canStart {
-                self.startSession(projectKey: projectKey, options: options)
-                self.networkCheckTimer?.invalidate()
+
+        self.pathMonitor?.start(queue: q)
+
+        DispatchQueue.main.async {
+            self.networkCheckTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
+                if self.trackerState == .canStart {
+                    self.startSession(projectKey: projectKey, options: options)
+                    self.networkCheckTimer?.invalidate()
+                    self.networkCheckTimer = nil
+                }
+                if self.trackerState == .cantStart {
+                    self.networkCheckTimer?.invalidate()
+                    self.networkCheckTimer = nil
+                }
             }
-            if self.trackerState == CheckState.cantStart {
-                self.networkCheckTimer?.invalidate()
-            }
-        })
+        }
     }
     
     @objc open func startSession(projectKey: String, options: OROptions) {
@@ -70,7 +79,7 @@ open class Openreplay: NSObject {
             guard let sessionResponse = sessionResponse else { return print("Openreplay: no response from /start request") }
             self.sessionStartTs = UInt64(Date().timeIntervalSince1970 * 1000)
             self.sessionData = sessionResponse
-            let captureSettings = getCaptureSettings(fps: 3, quality: "high") // getCaptureSettings(fps: sessionResponse.fps, quality: sessionResponse.quality)
+            let captureSettings = getCaptureSettings(fps: sessionResponse.fps, quality: sessionResponse.quality)
             ScreenshotManager.shared.setSettings(settings: captureSettings)
             
             MessageCollector.shared.start()
@@ -92,15 +101,15 @@ open class Openreplay: NSObject {
             }
             
             if options.screen {
-                ScreenshotManager.shared.start(startTs: self.sessionStartTs)
+                ScreenshotManager.shared.start(startTs: self.sessionStartTs, framesSupport: sessionResponse.framesSupport ?? false)
             }
-            
+
             if options.analytics {
                 Analytics.shared.start()
             }
         }
     }
-    
+
     @objc open func coldStart(projectKey: String, options: OROptions) {
         self.options = options
         self.projectKey = projectKey
@@ -132,7 +141,7 @@ open class Openreplay: NSObject {
             
             if options.screen {
                 ScreenshotManager.shared.setSettings(settings: captureSettings)
-                ScreenshotManager.shared.start(startTs: self.sessionStartTs)
+                ScreenshotManager.shared.start(startTs: self.sessionStartTs, framesSupport: sessionResponse.framesSupport ?? false)
                 ScreenshotManager.shared.cycleBuffer()
             }
             
@@ -157,6 +166,12 @@ open class Openreplay: NSObject {
     }
     
     @objc open func stop() {
+        networkCheckTimer?.invalidate()
+        networkCheckTimer = nil
+
+        pathMonitor?.cancel()
+        pathMonitor = nil
+
         MessageCollector.shared.stop()
         ScreenshotManager.shared.stop()
         Crashs.shared.stop()
@@ -247,6 +262,10 @@ open class Openreplay: NSObject {
         } else {
             print("Openreplay: Unknown msg type passed.")
         }
+    }
+    
+    @objc open func useTouchSwizzle() {
+        UIWindow.useOpenReplayTouchCapture()
     }
 }
 
